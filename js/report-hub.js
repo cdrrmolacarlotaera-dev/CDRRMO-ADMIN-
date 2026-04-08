@@ -1,4 +1,4 @@
-﻿        import { 
+        import { 
             firestore, 
             collection, 
             query, 
@@ -75,7 +75,7 @@
                     csvCell(isResolved ? 'Resolved' : 'Active'),
                     csvCell(item.reportedByName || item.reportedBy || 'Admin/System'),
                     csvCell(item.reportedByContactNumber || item.contactNumber || '')
-                ].join(',');   // â† comma, not tab
+                ].join(',');   // comma, not tab
             });
 
             // UTF-8 BOM so Excel detects encoding; \r\n line endings for max compatibility
@@ -122,7 +122,7 @@
                 async function loadCollection(collectionName, emergencyType) {
                     const ref = collection(firestore, collectionName);
                     // Includes admin "Create Alert" documents (status: 'active'). Do not run a second
-                    // query for dispatched â€” it duplicated every dispatched row (same doc matched twice).
+                    // query for dispatched - it duplicated every dispatched row (same doc matched twice).
                     const activeQuery = query(ref, where('status', 'in', ['pending', 'dispatched', 'ongoing', 'active']));
                     const activeSnapshot = await getDocs(activeQuery);
                     activeSnapshot.forEach(d => {
@@ -236,25 +236,25 @@
                 
                 switch (emergency.emergencyType) {
                     case 'alert':
-                        icon = 'ðŸ””';
+                        icon = '🔔';
                         label = 'Alert';
                         statusLabel = 'ALERT';
                         createdBy = 'Admin';
                         break;
                     case 'report':
-                        icon = 'âš ï¸';
+                        icon = '⚠️';
                         label = 'Emergency';
                         statusLabel = 'EMERGENCY';
                         createdBy = 'Citizen';
                         break;
                     case 'sos':
-                        icon = isOfflineSOS ? 'ðŸ“±' : 'ðŸ†˜';
+                        icon = isOfflineSOS ? '📱' : '🆘';
                         label = isOfflineSOS ? 'Offline SOS' : 'SOS Emergency';
                         statusLabel = isOfflineSOS ? 'OFFLINE SOS' : 'SOS';
                         createdBy = 'Citizen';
                         break;
                     default:
-                        icon = 'âš ï¸';
+                        icon = '⚠️';
                         label = 'Emergency';
                         statusLabel = 'EMERGENCY';
                         createdBy = 'Unknown';
@@ -278,7 +278,7 @@
                             </p>
                             <p class="alert-location" style="font-weight: 600; color: #1f2937;">
                                 <i class="fas fa-user"></i>
-                                ${citizenName}${citizenContact ? ` <a href="tel:${citizenContact}" style="color: #3b82f6;" onclick="event.stopPropagation();">â€¢ ðŸ“ž ${citizenContact}</a>` : ''}
+                                ${citizenName}${citizenContact ? ` <a href="tel:${citizenContact}" style="color: #3b82f6;" onclick="event.stopPropagation();">• 📞 ${citizenContact}</a>` : ''}
                             </p>
                             ${isOfflineSOS ? `
                                 <p class="alert-location" style="font-size: 0.8rem; color: #f97316; font-weight: 500;">
@@ -294,7 +294,7 @@
                                 <i class="far fa-clock"></i> ${timeAgo}
                             </small>
                             <span class="alert-status ${typeClass}">${statusLabel}</span>
-                            ${isAssigned ? `<span class="alert-status assigned">âœ“ ${emergency.assignedTeamName || 'Team Assigned'}</span>` : ''}
+                            ${isAssigned ? `<span class="alert-status assigned">✓ ${emergency.assignedTeamName || 'Team Assigned'}</span>` : ''}
                         </div>
                         <div class="alert-actions" onclick="event.stopPropagation();" style="flex-direction: column; gap: 8px;">
                             ${!isAssigned ? `
@@ -340,19 +340,19 @@
             let typeLabel, createdBy;
             switch (currentEmergency.emergencyType) {
                 case 'alert': 
-                    typeLabel = 'ðŸ”” Alert'; 
+                    typeLabel = '🔔 Alert'; 
                     createdBy = 'Admin';
                     break;
                 case 'report': 
-                    typeLabel = 'âš ï¸ Emergency'; 
+                    typeLabel = '⚠️ Emergency'; 
                     createdBy = 'Citizen';
                     break;
                 case 'sos': 
-                    typeLabel = 'ðŸ†˜ SOS Emergency'; 
+                    typeLabel = '🆘 SOS Emergency'; 
                     createdBy = 'Citizen';
                     break;
                 default:
-                    typeLabel = 'âš ï¸ Emergency';
+                    typeLabel = '⚠️ Emergency';
                     createdBy = 'Unknown';
             }
             // Add incident category if available
@@ -487,9 +487,9 @@
             // Show emergency info
             let typeLabel;
             switch (currentEmergency.emergencyType) {
-                case 'sos': typeLabel = 'ðŸ†˜ SOS Emergency'; break;
-                case 'alert': typeLabel = 'ðŸ”” ' + (currentEmergency.type || 'Alert'); break;
-                case 'report': typeLabel = 'ðŸ“‹ ' + (currentEmergency.type || 'Report'); break;
+                case 'sos': typeLabel = '🆘 SOS Emergency'; break;
+                case 'alert': typeLabel = '🔔 ' + (currentEmergency.type || 'Alert'); break;
+                case 'report': typeLabel = '📋 ' + (currentEmergency.type || 'Report'); break;
             }
             
             infoDiv.innerHTML = `
@@ -681,7 +681,7 @@
             modalDiv.innerHTML = `
                 <div class="dispatch-modal-content">
                     <div class="detail-header" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                        <h3>ðŸ“¤ Send SOS to Responder Team</h3>
+                        <h3>📤 Send SOS to Responder Team</h3>
                         <button class="detail-close" onclick="closeSendResponderModal()">&times;</button>
                     </div>
                     <div class="modal-body" style="max-height: 65vh; overflow-y: auto; padding: 20px;">
@@ -689,20 +689,20 @@
                         <!-- Emergency Type Badge -->
                         <div style="text-align: center; margin-bottom: 20px;">
                             <span style="display: inline-block; padding: 10px 24px; background: ${isOfflineSOS ? 'linear-gradient(135deg, #f97316, #ea580c)' : emergency.emergencyType === 'sos' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : emergency.emergencyType === 'alert' ? 'linear-gradient(135deg, #f97316, #ea580c)' : 'linear-gradient(135deg, #eab308, #ca8a04)'}; color: white; border-radius: 25px; font-weight: bold; font-size: 16px;">
-                                ${isOfflineSOS ? 'ðŸ“± OFFLINE SOS ALERT' : emergency.emergencyType === 'sos' ? 'ðŸš¨ SOS EMERGENCY' : emergency.emergencyType === 'alert' ? 'ðŸ”” ALERT' : 'âš ï¸ EMERGENCY'}
+                                ${isOfflineSOS ? '📱 OFFLINE SOS ALERT' : emergency.emergencyType === 'sos' ? '🚨 SOS EMERGENCY' : emergency.emergencyType === 'alert' ? '🔔 ALERT' : '⚠️ EMERGENCY'}
                             </span>
                         </div>
                         
                         <!-- Citizen Credentials Card -->
                         <div style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 2px solid #22c55e; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
                             <h4 style="margin: 0 0 16px 0; color: #166534; font-size: 18px;">
-                                ðŸ‘¤ Citizen Credentials (Auto-filled)
+                                👤 Citizen Credentials (Auto-filled)
                             </h4>
                             
                             <div style="display: grid; gap: 12px;">
                                 <!-- Name -->
                                 <div style="display: flex; align-items: center; gap: 15px; padding: 12px 15px; background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                    <div style="width: 40px; height: 40px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">ðŸ‘¤</div>
+                                    <div style="width: 40px; height: 40px; background: #dcfce7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">👤</div>
                                     <div style="flex: 1;">
                                         <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px;">Full Name</div>
                                         <div style="font-size: 18px; font-weight: 700; color: #1f2937;">${citizenName}</div>
@@ -711,7 +711,7 @@
                                 
                                 <!-- Phone -->
                                 <div style="display: flex; align-items: center; gap: 15px; padding: 12px 15px; background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                    <div style="width: 40px; height: 40px; background: #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">ðŸ“ž</div>
+                                    <div style="width: 40px; height: 40px; background: #dbeafe; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">📞</div>
                                     <div style="flex: 1;">
                                         <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px;">Phone Number</div>
                                         <div style="font-size: 18px; font-weight: 700; color: #3b82f6;">${citizenPhone || 'Not provided'}</div>
@@ -720,18 +720,18 @@
                                 
                                 <!-- Location -->
                                 <div style="display: flex; align-items: center; gap: 15px; padding: 12px 15px; background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                    <div style="width: 40px; height: 40px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">ðŸ“</div>
+                                    <div style="width: 40px; height: 40px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">📍</div>
                                     <div style="flex: 1;">
                                         <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px;">Location</div>
                                         <div style="font-size: 14px; font-weight: 600; color: #1f2937;">${location}</div>
                                         ${lat && lng ? `<div style="font-size: 12px; color: #6b7280; margin-top: 2px;">GPS: ${lat}, ${lng}</div>` : ''}
                                     </div>
-                                    ${lat && lng ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving" target="_blank" class="btn btn-sm" style="background: #3b82f6; color: white;">ðŸ§­ Directions</a>` : ''}
+                                    ${lat && lng ? `<a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving" target="_blank" class="btn btn-sm" style="background: #3b82f6; color: white;">🧭 Directions</a>` : ''}
                                 </div>
                                 
                                 <!-- Details -->
                                 <div style="padding: 12px 15px; background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                                    <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; margin-bottom: 6px;">ðŸ“ Emergency Details</div>
+                                    <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; margin-bottom: 6px;">📝 Emergency Details</div>
                                     <div style="font-size: 14px; color: #374151;">${details}</div>
                                 </div>
                             </div>
@@ -740,7 +740,7 @@
                         <!-- Team Selection -->
                         <div style="background: #f8fafc; border: 2px solid #8b5cf6; border-radius: 16px; padding: 20px;">
                             <h4 style="margin: 0 0 16px 0; color: #6d28d9; font-size: 18px;">
-                                ðŸ‘¥ Select Responder Team to Dispatch
+                                👥 Select Responder Team to Dispatch
                             </h4>
                             
                             <select id="dispatch-team-select" style="width: 100%; padding: 14px; border: 2px solid #a78bfa; border-radius: 10px; font-size: 16px; background: white; cursor: pointer;">
@@ -757,7 +757,7 @@
                         <!-- SMS Notification Option -->
                         <div style="background: #dcfce7; border: 1px solid #22c55e; border-radius: 12px; padding: 15px; margin-top: 16px;">
                             <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-size: 24px;">ðŸ“±</span>
+                                <span style="font-size: 24px;">📱</span>
                                 <div style="flex: 1;">
                                     <div style="font-weight: 600; color: #166534;">SMS Notification <span style="background: #22c55e; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;">ACTIVE</span></div>
                                     <div style="font-size: 13px; color: #166534;">Responders will receive SMS with citizen info.</div>
@@ -773,7 +773,7 @@
                     <div class="modal-footer" style="padding: 16px 20px; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;">
                         <button class="btn btn-secondary" onclick="closeSendResponderModal()">Cancel</button>
                         <button class="btn" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 12px 28px; font-weight: bold; font-size: 16px;" onclick="dispatchSOSToTeam('${id}')">
-                            <i class="fas fa-paper-plane"></i> ðŸ“¤ Send to Responder
+                            <i class="fas fa-paper-plane"></i> 📤 Send to Responder
                         </button>
                     </div>
                 </div>
@@ -787,7 +787,7 @@
             document.getElementById('sendResponderModal')?.remove();
         };
         
-        // Dispatch SOS to selected team (SMS via ./js/smsService.js â†’ Mocean form-urlencoded, same as alerts)
+        // Dispatch SOS to selected team (SMS via smsService.js -> Mocean form-urlencoded, same as alerts)
         window.dispatchSOSToTeam = async function(id) {
             const select = document.getElementById('dispatch-team-select');
             const teamId = select?.value;
@@ -858,7 +858,7 @@
                         const citizenPhone = emergency.reportedByContactNumber || emergency.contactNumber || 'N/A';
                         const location = emergency.location || 'Unknown';
                         
-                        let smsMessage = `ðŸš¨ CDRRMO SOS ALERT!\n`;
+                        let smsMessage = `🚨 CDRRMO SOS ALERT!\n`;
                         smsMessage += `Team: ${teamName}\n`;
                         smsMessage += `Citizen: ${citizenName}\n`;
                         smsMessage += `Phone: ${citizenPhone}\n`;
@@ -891,12 +891,12 @@
                     console.warn('Citizen assign SMS', ce);
                 }
                 
-                let alertMsg = `âœ… SOS Successfully Sent!\n\nTeam "${teamName}" has been dispatched.`;
+                let alertMsg = `✅ SOS Successfully Sent!\n\nTeam "${teamName}" has been dispatched.`;
                 if (sendSMSEnabled) {
-                    if (smsSuccess > 0) alertMsg += `\n\nðŸ“± SMS sent to ${smsSuccess} responder(s).`;
-                    if (smsFailed > 0) alertMsg += `\nâš ï¸ ${smsFailed} SMS failed.`;
+                    if (smsSuccess > 0) alertMsg += `\n\n📱 SMS sent to ${smsSuccess} responder(s).`;
+                    if (smsFailed > 0) alertMsg += `\n⚠️ ${smsFailed} SMS failed.`;
                 }
-                alertMsg += `\n\nCitizen Info:\nâ€¢ Name: ${emergency.reportedByName || emergency.reportedBy || 'Unknown'}\nâ€¢ Phone: ${emergency.reportedByContactNumber || emergency.contactNumber || 'N/A'}\nâ€¢ Location: ${emergency.location || 'Unknown'}`;
+                alertMsg += `\n\nCitizen Info:\n• Name: ${emergency.reportedByName || emergency.reportedBy || 'Unknown'}\n• Phone: ${emergency.reportedByContactNumber || emergency.contactNumber || 'N/A'}\n• Location: ${emergency.location || 'Unknown'}`;
                 
                 alert(alertMsg);
                 
@@ -934,14 +934,14 @@
             modalDiv.innerHTML = `
                 <div class="dispatch-modal-content">
                     <div class="detail-header sos" style="background: linear-gradient(135deg, #f97316, #ea580c);">
-                        <h3>ðŸ“± Offline SOS Details</h3>
+                        <h3>📱 Offline SOS Details</h3>
                         <button class="detail-close" onclick="closeOfflineSOSModal()">&times;</button>
                     </div>
                     <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding: 20px;">
                         <!-- Offline Status Banner -->
                         <div style="background: #fff7ed; border: 2px solid #f97316; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                <span style="font-size: 24px;">ðŸ“±</span>
+                                <span style="font-size: 24px;">📱</span>
                                 <strong style="color: #c2410c; font-size: 1.1rem;">This SOS was sent while citizen was offline</strong>
                             </div>
                             ${offlineTime ? `<p style="margin: 0; color: #7c2d12; font-size: 0.9rem;"><i class="fas fa-clock"></i> Created offline: <strong>${new Date(offlineTime).toLocaleString()}</strong></p>` : ''}
@@ -994,10 +994,10 @@
                             ${lat && lng ? `
                             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                                 <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" class="btn" style="background: #3b82f6; color: white; flex: 1; text-align: center; text-decoration: none;">
-                                    ðŸ—ºï¸ View on Map
+                                    🗺️ View on Map
                                 </a>
                                 <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving" target="_blank" class="btn" style="background: #10b981; color: white; flex: 1; text-align: center; text-decoration: none;">
-                                    ðŸ§­ Get Directions
+                                    🧭 Get Directions
                                 </a>
                             </div>
                             ` : ''}
