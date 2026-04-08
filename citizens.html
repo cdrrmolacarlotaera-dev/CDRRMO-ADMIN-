@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/auth-guard.js"></script>
+    <title>CDRRMO Admin - Citizens Management</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="styles/main.css">
+
+    <style>
+        /* Citizens Page Specific Styles */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+        }
+
+        .page-header .subtitle {
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        /* Notification Area */
+        .notification-card {
+            background: linear-gradient(135deg, #667eea15, #764ba215);
+            border: 2px solid var(--primary);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .notification-card .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .notification-card .notification-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--gradient-primary);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-size: 1.5rem;
+        }
+
+        .notification-card h3 {
+            font-size: 1.1rem;
+            color: var(--gray-900);
+            margin: 0 0 4px;
+        }
+
+        .notification-card p {
+            color: var(--gray-600);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notification-card .count-badge {
+            background: var(--gradient-danger);
+            color: var(--white);
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-weight: 700;
+            font-size: 0.9rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Table Container */
+        .table-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        .table-card .card-header {
+            padding: 20px 24px;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0;
+        }
+
+        .table-card .card-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .table-card .card-header h2 i {
+            color: var(--primary);
+        }
+
+        .user-table-container {
+            overflow-x: auto;
+        }
+
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .user-table thead th {
+            background: var(--gray-50);
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .user-table tbody td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+            font-size: 0.95rem;
+        }
+
+        .user-table tbody tr {
+            transition: var(--transition);
+        }
+
+        .user-table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        .user-table tbody td:last-child {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Pending Users Modal Enhancements */
+        #pendingUsersModal .modal-content {
+            max-width: 800px;
+        }
+
+        #pendingUsersModal .modal-header {
+            background: var(--gradient-primary);
+        }
+
+        .pending-user-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .pending-user-list li {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin-bottom: 16px;
+            background: var(--gray-50);
+            transition: var(--transition);
+        }
+
+        .pending-user-list li:hover {
+            background: var(--white);
+            box-shadow: var(--shadow-md);
+        }
+
+        .pending-user-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .user-details {
+            display: flex;
+            gap: 24px;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-info span {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--gray-700);
+        }
+
+        .user-info strong {
+            color: var(--gray-900);
+        }
+
+        .id-proof {
+            text-align: center;
+        }
+
+        .id-proof img {
+            max-width: 120px;
+            max-height: 120px;
+            border-radius: var(--radius-md);
+            border: 2px solid var(--gray-200);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .id-proof img:hover {
+            transform: scale(1.05);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .user-actions-modal {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .accept-button {
+            background: var(--gradient-accent);
+            color: var(--white);
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .accept-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .reject-button {
+            background: var(--gradient-danger);
+            color: var(--white);
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .reject-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .accept-all-button {
+            background: var(--gradient-accent);
+            color: var(--white);
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .accept-all-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .reject-all-button {
+            background: var(--gradient-danger);
+            color: var(--white);
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .reject-all-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Verification Badges */
+        .badge-resident {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.1));
+            color: var(--accent-dark);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 6px 12px;
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-outsider {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(245, 158, 11, 0.1));
+            color: var(--warning-dark);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            padding: 6px 12px;
+            border-radius: var(--radius-full);
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .verification-status {
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+<div class="sidebar-header">
+              <img src="styles/img/logocdrrmo.jpg" alt="CDRRMO Logo" class="sidebar-logo">
+              <h2>CDRRMO Admin</h2>
+          </div>
+        <ul class="sidebar-nav">
+            <li><a href="rescue.html"><i class="fas fa-gauge-high"></i><span>Dashboard</span></a></li>
+            <li><a href="responder.html"><i class="fas fa-user-shield"></i><span>Responders</span></a></li>
+            <li><a href="citizens.html" class="active"><i class="fas fa-users"></i><span>Citizens</span></a></li>
+            <li><a href="teams.html"><i class="fas fa-people-group"></i><span>Teams</span></a></li>
+            <li><a href="map.html"><i class="fas fa-map-location-dot"></i><span>Map</span></a></li>
+            <li><a href="history.html"><i class="fas fa-clock-rotate-left"></i><span>History</span></a></li>
+            <li><a href="report.html"><i class="fas fa-chart-line"></i><span>Reports</span></a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button onclick="sessionStorage.removeItem('adminLoggedIn'); window.location.href='index.html';" style="width:100%;padding:10px;background:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:10px;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            <p>CDRRMO La Carlota &copy; 2025</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main>
+        <div class="content">
+            <div class="page-header">
+                <div>
+                    <h1><i class="fas fa-users"></i> Citizens Management</h1>
+                    <p class="subtitle">Manage registered citizens and approval requests</p>
+                </div>
+            </div>
+
+            <!-- Pending Notification Card -->
+            <div class="notification-card">
+                <div class="notification-content">
+                    <div class="notification-icon">
+                        <i class="fas fa-user-clock"></i>
+                    </div>
+                    <div>
+                        <h3>Pending Approval Requests</h3>
+                        <p>
+                            <span class="count-badge" id="pending-count">0</span>
+                            citizens waiting for approval
+                        </p>
+                    </div>
+                </div>
+                <button class="btn btn-primary view-users-button">
+                    <i class="fas fa-eye"></i> Review Requests
+                </button>
+            </div>
+
+            <!-- Citizens Table -->
+            <div class="table-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-list"></i> Approved Citizens</h2>
+                    <div class="header-actions">
+                        <input type="text" id="searchInput" placeholder="Search citizens..." style="padding: 8px 16px; border: 1px solid var(--gray-300); border-radius: var(--radius); width: 250px;">
+                    </div>
+                </div>
+                <div class="user-table-container">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Address</th>
+                                <th>Contact Number</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Real-time data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="paginationControls">
+                    <!-- Dynamic pagination will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pending Users Modal -->
+    <div id="pendingUsersModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-clock"></i> Pending Approval Requests</h2>
+                <button class="close-button">&times;</button>
+            </div>
+            <div class="modal-body">
+                <ul class="pending-user-list">
+                    <!-- Dynamic content loaded by citizen-manager.js -->
+                </ul>
+            </div>
+            <div class="modal-actions">
+                <button class="accept-all-button">
+                    <i class="fas fa-check-double"></i> Accept All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        const viewUsersButton = document.querySelector('.view-users-button');
+        const pendingUsersModal = document.getElementById('pendingUsersModal');
+        const closePendingModalButton = document.querySelector('#pendingUsersModal .close-button');
+
+        viewUsersButton.addEventListener('click', () => {
+            pendingUsersModal.style.display = 'block';
+        });
+
+        closePendingModalButton.addEventListener('click', () => {
+            pendingUsersModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target == pendingUsersModal) {
+                pendingUsersModal.style.display = 'none';
+            }
+        });
+    </script>
+    <script type="module" src="js/firebase-api.js"></script>
+    <script type="module" src="js/citizen-manager.js"></script>
+    
+    <!-- Offline Alert Manager & Notifications -->
+    <script type="module" src="js/offlineAlertManager.js"></script>
+</body>
+</html>

@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/auth-guard.js"></script>
+    <title>CDRRMO Admin - Incident History</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="styles/main.css">
+
+    <style>
+        /* History Page Specific Styles */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+        }
+
+        .page-header .subtitle {
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        /* Filter Section */
+        .filter-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+        }
+
+        .filter-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-card h3 i {
+            color: var(--primary);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px 14px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* History Table Card */
+        .table-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        .table-card .card-header {
+            padding: 20px 24px;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 0;
+        }
+
+        .table-card .card-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .table-card .card-header h2 i {
+            color: var(--primary);
+        }
+
+        .history-table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table thead th {
+            background: var(--gray-50);
+            padding: 16px 20px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--gray-200);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .history-table tbody td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+            font-size: 0.95rem;
+        }
+
+        .history-table tbody tr {
+            transition: var(--transition);
+        }
+
+        .history-table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        /* Event Type Badges - 3 Legend Types */
+        .event-type-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            font-weight: 600;
+            gap: 6px;
+        }
+
+        /* Alert - Orange (Admin) */
+        .event-type-badge.alert {
+            background: rgba(249, 115, 22, 0.15);
+            color: #ea580c;
+        }
+
+        /* Emergency - Yellow (Citizen) */
+        .event-type-badge.emergency {
+            background: rgba(234, 179, 8, 0.15);
+            color: #ca8a04;
+        }
+
+        /* SOS / Incident - Red (Critical) */
+        .event-type-badge.incident,
+        .event-type-badge.sos {
+            background: rgba(239, 68, 68, 0.15);
+            color: #dc2626;
+        }
+
+        /* Status changes */
+        .event-type-badge.status {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+        }
+
+        /* Stats Summary */
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: var(--white);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-200);
+            text-align: center;
+        }
+
+        .summary-card h4 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin: 0 0 4px;
+        }
+
+        .summary-card p {
+            color: var(--gray-500);
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        /* Pagination Styles - Hidden */
+        .pagination {
+            display: none;
+        }
+
+        .pagination-button {
+            padding: 8px 14px;
+            border: 2px solid var(--gray-200);
+            background: var(--white);
+            color: var(--gray-700);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .pagination-button:hover:not([disabled]) {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .pagination-button.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--white);
+        }
+
+        .pagination-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Detail Modal Styles */
+        .detail-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .detail-content {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 600px;
+            margin: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            animation: modalSlideIn 0.3s ease;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .detail-header {
+            padding: 20px 24px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        }
+
+        .detail-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: inherit;
+            font-size: 24px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .detail-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .detail-body {
+            padding: 24px;
+            overflow-y: auto;
+            max-height: 60vh;
+        }
+
+        .detail-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            align-items: flex-start;
+        }
+
+        .detail-row i {
+            width: 20px;
+            color: var(--gray-400);
+            margin-top: 4px;
+        }
+
+        .detail-label {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            color: var(--gray-800);
+            font-size: 0.95rem;
+        }
+
+        .detail-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--gray-200);
+            background: var(--gray-50);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        /* ── Bulk Delete Toolbar ─────────────────────────────────────────────── */
+        .bulk-toolbar {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            background: #1e3a5f;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            box-shadow: 0 4px 16px rgba(30,58,95,0.3);
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .bulk-toolbar.visible { display: flex; }
+
+        .bulk-toolbar .selected-count {
+            font-weight: 700;
+            font-size: 0.95rem;
+            background: rgba(255,255,255,0.15);
+            padding: 4px 12px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        .bulk-toolbar .divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255,255,255,0.25);
+        }
+
+        .bulk-toolbar .bulk-label {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.75);
+            white-space: nowrap;
+        }
+
+        .bulk-period-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            border: 1.5px solid rgba(255,255,255,0.3);
+            background: transparent;
+            color: #fff;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s;
+            white-space: nowrap;
+        }
+
+        .bulk-period-btn:hover,
+        .bulk-period-btn.active {
+            background: rgba(255,255,255,0.2);
+            border-color: #fff;
+        }
+
+        .bulk-delete-btn {
+            margin-left: auto;
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.18s;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            white-space: nowrap;
+        }
+
+        .bulk-delete-btn:hover { background: #dc2626; }
+        .bulk-delete-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        .bulk-clear-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1.5px solid rgba(255,255,255,0.3);
+            background: transparent;
+            color: rgba(255,255,255,0.75);
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.18s;
+            white-space: nowrap;
+        }
+
+        .bulk-clear-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        /* Row checkbox */
+        .row-checkbox {
+            width: 17px;
+            height: 17px;
+            cursor: pointer;
+            accent-color: #6366f1;
+        }
+
+        .history-table tbody tr.selected-row {
+            background: #eef2ff !important;
+        }
+
+        /* ── Delete Confirmation Modal ───────────────────────────────────────── */
+        .delete-modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 3000;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-modal-box {
+            background: #fff;
+            border-radius: 16px;
+            padding: 36px 32px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+            text-align: center;
+            animation: modalSlideIn 0.25s ease;
+        }
+
+        .delete-modal-icon {
+            font-size: 3rem;
+            color: #ef4444;
+            margin-bottom: 16px;
+        }
+
+        .delete-modal-box h3 {
+            margin: 0 0 8px;
+            color: #111827;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .delete-modal-box p {
+            margin: 0 0 16px;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .delete-record-info {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 24px;
+            font-size: 0.8rem;
+            color: #991b1b;
+            word-break: break-all;
+            text-align: left;
+        }
+
+        .delete-modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .delete-modal-actions .btn-cancel {
+            flex: 1;
+            padding: 11px 0;
+            border-radius: 8px;
+            border: 2px solid #d1d5db;
+            background: #fff;
+            color: #374151;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .delete-modal-actions .btn-cancel:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .delete-modal-actions .btn-delete-confirm {
+            flex: 1;
+            padding: 11px 0;
+            border-radius: 8px;
+            border: none;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .delete-modal-actions .btn-delete-confirm:hover {
+            background: #dc2626;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .stats-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .filter-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .filter-actions .btn {
+                width: 100%;
+            }
+
+            .pagination {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="styles/img/logocdrrmo.jpg" alt="CDRRMO Logo" class="sidebar-logo">
+            <h2>CDRRMO Admin</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="rescue.html"><i class="fas fa-gauge-high"></i><span>Dashboard</span></a></li>
+            <li><a href="responder.html"><i class="fas fa-user-shield"></i><span>Responders</span></a></li>
+            <li><a href="citizens.html"><i class="fas fa-users"></i><span>Citizens</span></a></li>
+            <li><a href="teams.html"><i class="fas fa-people-group"></i><span>Teams</span></a></li>
+            <li><a href="map.html"><i class="fas fa-map-location-dot"></i><span>Map</span></a></li>
+            <li><a href="history.html" class="active"><i class="fas fa-clock-rotate-left"></i><span>History</span></a></li>
+            <li><a href="report.html"><i class="fas fa-chart-line"></i><span>Reports</span></a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button onclick="sessionStorage.removeItem('adminLoggedIn'); window.location.href='index.html';" style="width:100%;padding:10px;background:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:10px;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            <p>CDRRMO La Carlota &copy; 2025</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main>
+        <div class="content">
+            <div class="page-header">
+                <div>
+                    <h1><i class="fas fa-clock-rotate-left"></i> Incident History</h1>
+                    <p class="subtitle">View and filter past emergency incidents and activities</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="refreshHistoryData()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Summary -->
+            <div class="stats-summary">
+                <div class="summary-card">
+                    <h4>156</h4>
+                    <p>Total Incidents</p>
+                </div>
+                <div class="summary-card">
+                    <h4>142</h4>
+                    <p>Resolved</p>
+                </div>
+                <div class="summary-card">
+                    <h4>14</h4>
+                    <p>Ongoing</p>
+                </div>
+                <div class="summary-card">
+                    <h4>91%</h4>
+                    <p>Resolution Rate</p>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-card">
+                <h3><i class="fas fa-filter"></i> Filter History</h3>
+                <div class="filter-grid">
+                    <div class="filter-group">
+                        <label for="date-from">Date From</label>
+                        <input type="date" id="date-from">
+                    </div>
+                    <div class="filter-group">
+                        <label for="date-to">Date To</label>
+                        <input type="date" id="date-to">
+                    </div>
+                    <div class="filter-group">
+                        <label for="event-type">Report Type</label>
+                        <select id="event-type">
+                            <option value="">All Types</option>
+                            <option value="alert" style="color: #f97316;">🔔 Alert (Admin)</option>
+                            <option value="emergency" style="color: #eab308;">⚠️ Emergency (Citizen)</option>
+                            <option value="sos" style="color: #ef4444;">🆘 SOS Emergency (Critical)</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="location">Location</label>
+                        <input type="text" id="location" placeholder="Enter location...">
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-search"></i> Apply Filter
+                    </button>
+                    <button class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Bulk Delete Toolbar ──────────────────────────────────────── -->
+            <div id="bulkToolbar" class="bulk-toolbar">
+                <span class="selected-count" id="selectedCountLabel">0 selected</span>
+                <div class="divider"></div>
+                <span class="bulk-label">Quick select:</span>
+                <button class="bulk-period-btn" data-bulk="today">Today</button>
+                <button class="bulk-period-btn" data-bulk="yesterday">Yesterday</button>
+                <button class="bulk-period-btn" data-bulk="last7">Last 7 Days</button>
+                <button class="bulk-period-btn" data-bulk="last30">Last 30 Days</button>
+                <button class="bulk-period-btn" data-bulk="resolved">All Resolved</button>
+                <button class="bulk-period-btn" data-bulk="all_visible">All Visible</button>
+                <button class="bulk-clear-btn" id="clearSelectionBtn">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+                <button class="bulk-delete-btn" id="bulkDeleteBtn" disabled>
+                    <i class="fas fa-trash"></i> Delete Selected (<span id="bulkDeleteCount">0</span>)
+                </button>
+            </div>
+
+            <!-- History Table -->
+            <div class="table-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-list"></i> History Log</h2>
+                    <span style="color: var(--gray-500); font-size: 0.9rem;">Showing 5 of 156 entries</span>
+                </div>
+                <div class="history-table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;">
+                                    <input type="checkbox" id="selectAllCheckbox" class="row-checkbox" title="Select all visible rows">
+                                </th>
+                                <th>ID</th>
+                                <th>Date/Time</th>
+                                <th>Event Type</th>
+                                <th>Description</th>
+                                <th>Location</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px; color: var(--gray-500);">
+                                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 12px; display: block;"></i>
+                                    Loading history...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <!-- Pagination will be dynamically generated -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ── Delete Confirmation Modal ──────────────────────────────────────────── -->
+    <div id="deleteConfirmModal" class="delete-modal-overlay">
+        <div class="delete-modal-box">
+            <div class="delete-modal-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h3 id="deleteModalTitle">Delete History Record?</h3>
+            <p id="deleteModalSubtitle">This action is <strong>permanent</strong> and cannot be undone.</p>
+            <div id="deleteRecordInfo" class="delete-record-info"></div>
+            <div class="delete-modal-actions">
+                <button id="deleteCancelBtn" class="btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button id="deleteConfirmBtn" class="btn-delete-confirm">
+                    <i class="fas fa-trash"></i> Yes, Delete
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- ── End Delete Confirmation Modal ─────────────────────────────────────── -->
+
+    <!-- Scripts -->
+    <script type="module" src="js/history-manager.js"></script>
+    
+    <!-- Offline Alert Manager & Notifications -->
+    <script type="module" src="js/offlineAlertManager.js"></script>
+</body>
+</html>

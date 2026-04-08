@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/auth-guard.js"></script>
+    <title>CDRRMO Admin - Activity Log</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <img src="styles/img/logocdrrmo.jpg" alt="CDRRMO Logo" class="sidebar-logo">
+            <h2>CDRRMO Admin</h2>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="rescue.html"><i class="fas fa-gauge-high"></i><span>Dashboard</span></a></li>
+            <li><a href="responder.html"><i class="fas fa-user-shield"></i><span>Responders</span></a></li>
+            <li><a href="citizens.html"><i class="fas fa-users"></i><span>Citizens</span></a></li>
+            <li><a href="teams.html"><i class="fas fa-people-group"></i><span>Teams</span></a></li>
+            <li><a href="map.html"><i class="fas fa-map-location-dot"></i><span>Map</span></a></li>
+            <li><a href="history.html"><i class="fas fa-clock-rotate-left"></i><span>History</span></a></li>
+            <li><a href="report.html"><i class="fas fa-chart-line"></i><span>Reports</span></a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button onclick="sessionStorage.removeItem('adminLoggedIn'); window.location.href='index.html';" style="width:100%;padding:10px;background:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:10px;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            <p>CDRRMO La Carlota &copy; 2025</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main>
+        <div class="content">
+            <div class="page-header">
+                <div>
+                    <h1><i class="fas fa-clipboard-list"></i> Admin Activity Log</h1>
+                    <p class="subtitle">Audit trail of admin actions (responders, citizens, teams, incidents)</p>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="card-header">
+                    <h2><i class="fas fa-list"></i> Recent Actions</h2>
+                    <span id="activity-summary">Loading...</span>
+                </div>
+                <div class="user-table-container">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Action</th>
+                                <th>Target</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activity-body">
+                            <tr>
+                                <td colspan="4" style="text-align:center; padding:32px; color: var(--gray-500);">
+                                    <i class="fas fa-spinner fa-spin"></i> Loading activity…
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="js/activity-loader.js"></script>
+</body>
+</html>
+

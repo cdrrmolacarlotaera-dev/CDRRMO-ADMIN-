@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="js/auth-guard.js"></script>
+    <title>CDRRMO Admin - Emergency Map</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="styles/main.css">
+
+    <style>
+        /* Map Page Specific Styles */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .page-header h1 {
+            margin: 0;
+        }
+
+        .page-header .subtitle {
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+
+        /* Map container — original frame; no z-index (z-index was hiding the legend below) */
+        #map-container {
+            height: 550px;
+            width: 100%;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 2px solid var(--gray-200);
+            overflow: hidden;
+        }
+
+        /* Popups still need room; autoPan + maxHeight scroll handle most cases inside the box */
+        #map-container.leaflet-container {
+            border-radius: var(--radius-lg);
+        }
+
+        /* Controls Card */
+        .map-controls-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+        }
+
+        .map-controls-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .map-controls-card h3 i {
+            color: var(--primary);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--gray-600);
+            margin-bottom: 8px;
+        }
+
+        .control-group input,
+        .control-group select {
+            padding: 10px 14px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        .control-group input:focus,
+        .control-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+
+        .checkbox-group label {
+            margin: 0;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        /* Map Marker Icons - 3 Legend Types Only:
+           - Alert (Orange) = Created by Admin - warnings/notifications
+           - Emergency (Yellow) = Created by Citizens - urgent situations
+           - SOS Emergency (Red) = Created by Citizens - life-threatening
+        */
+        
+        /* Base marker style */
+        .legend-icon {
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+        }
+
+        /* Leaflet marker overrides */
+        .leaflet-marker-icon.legend-icon {
+            border-radius: 50% !important;
+            border: 3px solid white !important;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.4) !important;
+        }
+
+        /* Alert - ORANGE (Admin Created) */
+        .legend-icon.alert-icon { 
+            background: linear-gradient(135deg, #f97316, #ea580c) !important; 
+        }
+        
+        /* Emergency - YELLOW (Citizen Created) */
+        .legend-icon.emergency-icon { 
+            background: linear-gradient(135deg, #eab308, #ca8a04) !important; 
+        }
+        
+        /* SOS Emergency - RED (Citizen Created - Critical) */
+        .legend-icon.sos-icon { 
+            background: linear-gradient(135deg, #ef4444, #dc2626) !important; 
+        }
+
+        /* SOS pulse animation for critical emergencies */
+        .legend-icon.sos-icon,
+        .leaflet-marker-icon.sos-icon {
+            animation: pulse-sos 1.5s infinite;
+        }
+
+        @keyframes pulse-sos {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 3px 10px rgba(239, 68, 68, 0.4);
+            }
+            50% { 
+                transform: scale(1.15);
+                box-shadow: 0 5px 20px rgba(239, 68, 68, 0.7);
+            }
+        }
+
+        /* Loading Indicator */
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            color: var(--primary);
+            font-weight: 600;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: var(--radius);
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .loading-indicator::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Legend Card — stay above map layer so it is always visible */
+        .legend-card {
+            position: relative;
+            z-index: 2;
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 20px 24px;
+            margin-top: 24px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+        }
+
+        .legend-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin: 0 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-card h3 i {
+            color: var(--primary);
+        }
+
+        .legend-list {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .legend-list li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--gray-700);
+            font-size: 0.9rem;
+        }
+
+        /* Legend icons in the legend card */
+        .legend-card .legend-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: var(--radius-full);
+            border: 2px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        
+        /* Colors already defined above for .legend-icon.alert, .report, .sos */
+
+        /* Custom Popup Styles */
+        .custom-popup .leaflet-popup-content-wrapper {
+            padding: 0;
+            overflow: hidden;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            max-height: min(85vh, 560px);
+        }
+
+        .custom-popup .leaflet-popup-content {
+            margin: 0;
+            width: 100% !important;
+            min-width: 300px;
+            max-width: 380px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        .custom-popup .leaflet-popup-close-button {
+            width: 32px;
+            height: 32px;
+            font-size: 22px;
+            line-height: 28px;
+            color: #fff !important;
+            z-index: 2;
+            padding: 0;
+            top: 8px;
+            right: 8px;
+        }
+
+        .custom-popup .leaflet-popup-close-button:hover {
+            color: #f3f4f6 !important;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: var(--radius-full);
+        }
+
+        .popup-container {
+            font-family: var(--font-sans);
+            display: flex;
+            flex-direction: column;
+            max-height: min(85vh, 560px);
+        }
+
+        .custom-popup .popup-header {
+            padding: 14px 40px 14px 18px;
+            color: white;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* Popup headers - 3 Legend Types */
+        .popup-header-alert { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .popup-header-emergency { background: linear-gradient(135deg, #eab308, #ca8a04); }
+        .popup-header-sos { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        .popup-title {
+            margin: 0;
+            font-size: 15px;
+        }
+
+        .popup-status {
+            padding: 4px 10px;
+            border-radius: var(--radius-full);
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-active { background: #10b981; color: white; }
+        .status-inactive { background: #6b7280; color: white; }
+
+        .popup-content {
+            padding: 16px 18px;
+            background: white;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1;
+            min-height: 0;
+            max-height: min(50vh, 340px);
+        }
+
+        .popup-detail {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            font-size: 0.9rem;
+        }
+
+        .popup-icon {
+            margin-right: 10px;
+            color: var(--gray-500);
+            width: 18px;
+        }
+
+        .popup-label {
+            font-weight: 600;
+            margin-right: 6px;
+            color: var(--gray-600);
+        }
+
+        .popup-value {
+            flex: 1;
+            color: var(--gray-800);
+        }
+
+        .popup-description {
+            background: var(--gray-50);
+            padding: 12px;
+            border-radius: var(--radius);
+            margin: 12px 0;
+            font-size: 0.875rem;
+            color: var(--gray-700);
+            line-height: 1.5;
+            border-left: 3px solid var(--gray-300);
+        }
+
+        .popup-actions {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 12px 18px;
+            background: var(--gray-50);
+            justify-content: space-between;
+            border-top: 1px solid var(--gray-200);
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .popup-button {
+            flex: 1;
+            padding: 8px 14px;
+            border: none;
+            border-radius: var(--radius);
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .popup-button:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Assign Team Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .assign-modal {
+            background: white;
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 500px;
+            margin: 20px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--gray-200);
+            background: var(--gray-50);
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        }
+
+        .team-info-hint {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 14px;
+            background: linear-gradient(135deg, #dbeafe, #eff6ff);
+            border-radius: var(--radius);
+            border-left: 4px solid var(--primary);
+            margin-top: 16px;
+        }
+
+        .team-info-hint i {
+            color: var(--primary);
+            margin-top: 2px;
+        }
+
+        .team-info-hint span {
+            font-size: 0.875rem;
+            color: var(--gray-700);
+            line-height: 1.5;
+        }
+
+        #teamSelectDropdown {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        #teamSelectDropdown:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        #teamSelectDropdown optgroup {
+            font-weight: 600;
+            color: var(--gray-900);
+            background: var(--gray-50);
+        }
+
+        #teamSelectDropdown option {
+            padding: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #map-container {
+                height: 400px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .legend-list {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .button-group {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .button-group .btn {
+                width: 100%;
+            }
+
+            .assign-modal {
+                margin: 10px;
+            }
+        }
+
+        /* Filter type color indicators - 3 Legend Types */
+        #emergency-type-filter option[value="alerts"] { color: #f97316; font-weight: 600; }
+        #emergency-type-filter option[value="reports"] { color: #eab308; font-weight: 600; }
+        #emergency-type-filter option[value="sos"] { color: #ef4444; font-weight: 600; }
+
+        /* Status message styling */
+        #map-status {
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+<div class="sidebar-header">
+              <img src="styles/img/logocdrrmo.jpg" alt="CDRRMO Logo" class="sidebar-logo">
+              <h2>CDRRMO Admin</h2>
+          </div>
+        <ul class="sidebar-nav">
+            <li><a href="rescue.html"><i class="fas fa-gauge-high"></i><span>Dashboard</span></a></li>
+            <li><a href="responder.html"><i class="fas fa-user-shield"></i><span>Responders</span></a></li>
+            <li><a href="citizens.html"><i class="fas fa-users"></i><span>Citizens</span></a></li>
+            <li><a href="teams.html"><i class="fas fa-people-group"></i><span>Teams</span></a></li>
+            <li><a href="map.html" class="active"><i class="fas fa-map-location-dot"></i><span>Map</span></a></li>
+            <li><a href="history.html"><i class="fas fa-clock-rotate-left"></i><span>History</span></a></li>
+            <li><a href="report.html"><i class="fas fa-chart-line"></i><span>Reports</span></a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button onclick="sessionStorage.removeItem('adminLoggedIn'); window.location.href='index.html';" style="width:100%;padding:10px;background:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin-bottom:10px;"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            <p>CDRRMO La Carlota &copy; 2025</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main>
+        <div class="content">
+            <div class="page-header">
+                <div>
+                    <h1><i class="fas fa-map-location-dot"></i> Emergency Map</h1>
+                    <p class="subtitle">Real-time visualization of active emergencies</p>
+                </div>
+            </div>
+
+            <!-- Map Controls -->
+            <div class="map-controls-card">
+                <h3><i class="fas fa-sliders"></i> Map Controls</h3>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label for="emergency-type-filter">Report Type</label>
+                        <select id="emergency-type-filter">
+                            <option value="all">All Reports</option>
+                            <option value="alerts" style="color: #f97316;">🔔 Alert (Admin)</option>
+                            <option value="reports" style="color: #eab308;">⚠️ Emergency (Citizen)</option>
+                            <option value="sos" style="color: #ef4444;">🆘 SOS Emergency (Critical)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="incident-filter">Incident Category</label>
+                        <select id="incident-filter">
+                            <option value="all">All Categories</option>
+                            <option value="Fire">🔥 Fire</option>
+                            <option value="Flood">🌊 Flood</option>
+                            <option value="Crime">🚨 Crime</option>
+                            <option value="Accident">🚗 Accident</option>
+                            <option value="Earthquake">🏚️ Earthquake</option>
+                            <option value="Medical">🏥 Medical</option>
+                            <option value="Other">⚠️ Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="location-search">Search Location</label>
+                        <input type="text" id="location-search" placeholder="Enter location...">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="date-from">Date From</label>
+                        <input type="date" id="date-from">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="date-to">Date To</label>
+                        <input type="date" id="date-to">
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="active-only">
+                        <label for="active-only">Show All Record Reports</label>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="refresh-map" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i> Refresh Map
+                        </button>
+                        <button id="clear-filters" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loading-indicator" class="loading-indicator">
+                Loading emergency data...
+            </div>
+
+            <!-- Status Message -->
+            <div id="map-status" style="display: none; text-align: center; padding: 12px 20px; border-radius: 8px; margin-bottom: 16px; font-weight: 500;">
+            </div>
+
+            <!-- Map Container -->
+            <div id="map-container" style="height:550px;width:100%;"></div>
+
+            <!-- Legend - 3 Report Types Only -->
+            <div class="legend-card">
+                <h3><i class="fas fa-info-circle"></i> Map Legend - Report Types</h3>
+                <ul class="legend-list">
+                    <li>
+                        <span class="legend-icon alert-icon"></span>
+                        <div>
+                            <strong>🔔 Alert</strong> <span style="color: #f97316;">(Orange)</span>
+                            <p style="margin: 4px 0 0; font-size: 0.8rem; color: #6b7280;">Created by Admin - Warnings & Notifications</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="legend-icon emergency-icon"></span>
+                        <div>
+                            <strong>⚠️ Emergency</strong> <span style="color: #eab308;">(Yellow)</span>
+                            <p style="margin: 4px 0 0; font-size: 0.8rem; color: #6b7280;">Created by Citizens - Urgent Situations</p>
+                        </div>
+                    </li>
+                    <li>
+                        <span class="legend-icon sos-icon"></span>
+                        <div>
+                            <strong>🆘 SOS Emergency</strong> <span style="color: #ef4444;">(Red)</span>
+                            <p style="margin: 4px 0 0; font-size: 0.8rem; color: #6b7280;">Created by Citizens - Life-Threatening</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <!-- Assign Team Modal -->
+    <div id="assignTeamModal" class="modal" style="display: none;">
+        <div class="modal-content assign-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-paper-plane"></i> Assign Response Team</h2>
+                <button class="modal-close" onclick="document.getElementById('assignTeamModal').style.display='none'">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="assignEmergencyInfo">
+                    <!-- Emergency info will be populated here -->
+                </div>
+                
+                <div class="form-group">
+                    <label for="teamSelectDropdown">
+                        <i class="fas fa-users"></i> Select Team to Dispatch
+                    </label>
+                    <select id="teamSelectDropdown" class="form-control">
+                        <option value="">-- Loading Teams --</option>
+                    </select>
+                </div>
+                
+                <div class="team-info-hint">
+                    <i class="fas fa-info-circle"></i>
+                    <span>The selected team will be notified immediately and can view directions to the emergency location on their responder app.</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="document.getElementById('assignTeamModal').style.display='none'">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button class="btn btn-primary" onclick="assignTeamToEmergency()">
+                    <i class="fas fa-paper-plane"></i> Dispatch Team
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="js/map-init.js"></script>
+    
+    <!-- Offline Alert Manager & Notifications -->
+    <script type="module" src="js/offlineAlertManager.js"></script>
+</body>
+</html>
