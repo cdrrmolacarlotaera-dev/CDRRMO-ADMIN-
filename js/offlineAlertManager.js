@@ -83,7 +83,7 @@ class OfflineAlertManager {
       const sosRef = collection(firestore, 'SOS');
       const q = query(
         sosRef,
-        where('status', 'in', ['pending', 'dispatched', 'ongoing']),
+        where('status', 'in', ['pending', 'active', 'dispatched', 'ongoing']),
         orderBy('timestamp', 'desc'),
         limit(50)
       );
@@ -144,7 +144,7 @@ class OfflineAlertManager {
       const sosRef = collection(firestore, 'SOS');
       const q = query(
         sosRef,
-        where('status', 'in', ['pending', 'dispatched', 'ongoing']),
+        where('status', 'in', ['pending', 'active', 'dispatched', 'ongoing']),
         orderBy('timestamp', 'desc'),
         limit(50)
       );
@@ -361,8 +361,10 @@ class OfflineAlertManager {
     mainContent.insertBefore(section, mainContent.firstChild);
 
     // Add event listeners
-    document.getElementById('refresh-offline-alerts')?.addEventListener('click', () => {
-      this.loadOfflineAlerts();
+    document.getElementById('refresh-offline-alerts')?.addEventListener('click', async () => {
+      await this.loadAllSOSAlerts();
+      await this.loadOfflineAlerts();
+      this.updateOfflineAlertsUI();
     });
 
     document.getElementById('add-sms-alert')?.addEventListener('click', () => {
@@ -379,8 +381,9 @@ class OfflineAlertManager {
     const container = document.getElementById('offline-alerts-container');
     if (!container) return;
 
-    // Show ALL active SOS alerts (deduplicated by reportedBy + timestamp to avoid duplicates)
-    const activeAlerts = this.allSOSAlerts.filter(a => a.status === 'active');
+    const activeAlerts = this.allSOSAlerts.filter(a => 
+      ['pending', 'active', 'dispatched', 'ongoing'].includes(a.status)
+    );
     
     // Deduplicate based on key properties (same person, same time = likely duplicate)
     const seen = new Set();
@@ -408,18 +411,24 @@ class OfflineAlertManager {
     // Create compact list view
     container.innerHTML = uniqueAlerts.map(alert => {
       const isOffline = alert.wasOffline || alert.isOffline || alert.sosSource === 'offline';
+      const isManualSMS = alert.isManualSMSEntry === true;
       const citizenName = alert.reportedByName || alert.reportedBy || 'Anonymous';
       const citizenPhone = alert.reportedByContactNumber || alert.contactNumber || '';
       const isAssigned = alert.assignedTeamId;
+
+      let badgeColor = '#ef4444';
+      let badgeLabel = '🚨 SOS';
+      if (isManualSMS) { badgeColor = '#8b5cf6'; badgeLabel = '📞 SMS HOTLINE'; }
+      else if (isOffline) { badgeColor = '#f97316'; badgeLabel = '📱 OFFLINE'; }
       
       return `
-      <div class="offline-alert-card active" style="border-left: 4px solid ${isOffline ? '#f97316' : '#ef4444'}; padding: 12px; margin-bottom: 10px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <div class="offline-alert-card active" style="border-left: 4px solid ${badgeColor}; padding: 12px; margin-bottom: 10px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <div style="display: flex; gap: 6px; align-items: center;">
-            <span style="padding: 3px 8px; background: ${isOffline ? '#f97316' : '#ef4444'}; color: white; border-radius: 4px; font-size: 11px; font-weight: 600;">
-              ${isOffline ? '📱 OFFLINE' : '🚨 SOS'}
+            <span style="padding: 3px 8px; background: ${badgeColor}; color: white; border-radius: 4px; font-size: 11px; font-weight: 600;">
+              ${badgeLabel}
             </span>
-            ${isAssigned ? `<span style="padding: 3px 8px; background: #22c55e; color: white; border-radius: 4px; font-size: 11px;">✓ Sent</span>` : ''}
+            ${isAssigned ? `<span style="padding: 3px 8px; background: #22c55e; color: white; border-radius: 4px; font-size: 11px;">✓ Dispatched</span>` : `<span style="padding: 3px 8px; background: #f59e0b; color: white; border-radius: 4px; font-size: 11px;">Awaiting Dispatch</span>`}
           </div>
           <span style="font-size: 11px; color: #6b7280;">${this.formatTime(alert.timestamp)}</span>
         </div>
@@ -991,21 +1000,28 @@ class OfflineAlertManager {
    */
   async saveSMSAlert() {
     try {
-      const name = document.getElementById('sms-sender-name')?.value || 'Unknown';
-      const phone = document.getElementById('sms-phone')?.value || '';
-      const content = document.getElementById('sms-content')?.value || '';
-      const location = document.getElementById('sms-location')?.value || 'Unknown';
+      const name = document.getElementById('sms-sender-name')?.value?.trim() || 'Unknown';
+      const phone = document.getElementById('sms-phone')?.value?.trim() || '';
+      const content = document.getElementById('sms-content')?.value?.trim() || '';
+      const location = document.getElementById('sms-location')?.value?.trim() || 'Unknown';
       const lat = parseFloat(document.getElementById('sms-lat')?.value);
       const lng = parseFloat(document.getElementById('sms-lng')?.value);
+
+      if (!name || name === 'Unknown') {
+        alert('Please enter the sender name.');
+        return;
+      }
 
       const alertData = {
         type: 'SOS Emergency',
         location: location,
         details: content || 'SMS Emergency received on CDRRMO hotline',
         reportedBy: name,
+        reportedByName: name,
         reportedByEmail: 'sms_alert',
         contactNumber: phone,
-        status: 'active',
+        reportedByContactNumber: phone,
+        status: 'pending',
         isResolved: false,
         isAcknowledged: false,
         wasOffline: true,
@@ -1015,23 +1031,27 @@ class OfflineAlertManager {
         syncedAt: new Date().toISOString()
       };
 
-      // Add coordinates if provided
       if (!isNaN(lat) && !isNaN(lng)) {
-        alertData.coordinates = {
-          latitude: lat,
-          longitude: lng
-        };
+        alertData.coordinates = { latitude: lat, longitude: lng };
       }
 
-      await addDoc(collection(firestore, 'SOS'), alertData);
+      const docRef = await addDoc(collection(firestore, 'SOS'), alertData);
       
-      console.log('[OfflineAlertManager] SMS alert added');
+      console.log('[OfflineAlertManager] SMS alert added with ID:', docRef.id);
       document.getElementById('sms-alert-modal')?.remove();
-      alert('SMS alert added successfully');
+
+      // Refresh list so the new alert appears
+      await this.loadAllSOSAlerts();
+      this.updateOfflineAlertsUI();
+
+      this.showSuccessNotification(
+        'SMS Alert Created',
+        `Alert for "${name}" has been added. You can now dispatch a responder team using the Send button.`
+      );
       
     } catch (error) {
       console.error('[OfflineAlertManager] Error adding SMS alert:', error);
-      alert('Error adding SMS alert');
+      alert('Error adding SMS alert: ' + error.message);
     }
   }
 
