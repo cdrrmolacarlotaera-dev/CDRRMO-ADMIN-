@@ -42,7 +42,7 @@ class OfflineAlertManager {
     this.allSOSUnsubscribe = null;
     // Pages where the Active SOS Alert UI section should appear
     // Keep it only on the Reports page (report.html)
-    this.pagesWithUI = ['report.html'];
+    this.pagesWithUI = [];
   }
 
   /**
